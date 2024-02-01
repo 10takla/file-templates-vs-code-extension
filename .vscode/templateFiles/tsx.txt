@@ -1,0 +1,26 @@
+import { forwardRef, memo, ForwardedRef } from 'react';
+import { HStack } from 'src/shared/ui/Stack';
+import { classNames } from 'src/shared/lib/classNames/classNames';
+import cls from './{fileName}.module.scss';
+
+type El = HTMLElement | undefined;
+
+interface {fileName}Props{
+
+}
+
+const {fileName} = (props: {fileName}Props, ref: ForwardedRef<El>) => {
+    const {
+        
+    } = props
+
+
+
+    return (
+        <HStack>
+
+        </HStack>
+    )
+};
+
+export default memo(forwardRef({fileName}));

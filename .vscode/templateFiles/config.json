@@ -1,0 +1,24 @@
+{
+    "kit": [
+        "module.scss",
+        "tsx"
+    ],
+    "ui-comp": [
+        {
+            "ui": []
+        },
+        "kit"
+    ],
+    "model": [
+        "selector.ts",
+        "service.ts",
+        "slice.ts"
+    ],
+    "component": [
+        {
+            "model": ["model"],
+            "type": ["type.ts"]
+        },
+        "ui-comp"
+    ]
+}
