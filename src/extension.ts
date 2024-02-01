@@ -5,14 +5,14 @@ import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('file-templates.createNewFile', async (args) => {
-		const templateDir = path.join(context.extensionPath, 'out', 'templateFiles');
+		const rootDir = path.join(context.extensionPath, 'out')
+		const templateDir = path.join(rootDir, 'templateFiles');
 
-		const fileItems = fs.readdirSync(templateDir)
-			.filter(file => path.parse(file).ext === '.txt')
-			.map(file => path.basename(file, '.txt'));
+		const fileItems = fs.readdirSync(templateDir);
+		
 		type Content = Array<string | ComponentsOrFiles>;
 		type ComponentsOrFiles = Record<'string', Content>;
-		const pathToConfig = path.join(templateDir, 'config.json');
+		const pathToConfig = path.join(rootDir, 'config.json');
 		const config = JSON.parse(fs.readFileSync(pathToConfig, 'utf8')) as ComponentsOrFiles;
 		const componentItems = Object.keys(config);
 
@@ -38,9 +38,9 @@ export function activate(context: vscode.ExtensionContext) {
 		if (!elementName) { return; }
 
 		const createFile = async (templateName: string, destination: string[] = []) => {
-			const destinationUri = vscode.Uri.joinPath(workspaceFolder, ...destination, `${elementName}.${templateName}`);
+			const destinationUri = vscode.Uri.joinPath(workspaceFolder, ...destination, `${elementName}${templateName}`);
 			console.log('destinationUri', destinationUri);
-			const templateUri = vscode.Uri.file(path.join(templateDir, `${templateName}.txt`));
+			const templateUri = vscode.Uri.file(path.join(templateDir, templateName));
 			const templateContent = await vscode.workspace.fs.readFile(templateUri);
 			const templateText = new TextDecoder().decode(templateContent);
 			const replacedText = templateText.replace(/{fileName}/g, elementName);
