@@ -5,12 +5,12 @@ You can create and use:
     - Template files.
     The template file name is the extension of the final file. 
         /* For example, for the file "Name.module.scss", the template file name should be "module.scss". */
-    All created template files are stored in the directory of this extension in the ".vscode/templateFiles" directory in ".txt" format.
+    All created template files are stored in the directory of this extension in the "out/templateFiles" directory in ".txt" format.
     In the files you can define external variables:
         {fileName} - file name
 
     - Template components. 
-    Template components group template files. The components are created in the directory of this extension (in the file ".vscode/templateFiles/config.json").
+    Template components group template files. The components are created in the directory of this extension (in the file "out/templateFiles/config.json").
 
 MORE ABOUT COMPONENTS:
 

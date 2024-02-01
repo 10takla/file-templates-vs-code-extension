@@ -4,8 +4,8 @@ import * as path from 'path';
 
 
 export function activate(context: vscode.ExtensionContext) {
-	let disposable = vscode.commands.registerCommand('file-templates.createNewFile', async () => {
-		const templateDir = path.join(context.extensionPath, '.vscode', 'templateFiles');
+	let disposable = vscode.commands.registerCommand('file-templates.createNewFile', async (args) => {
+		const templateDir = path.join(context.extensionPath, 'out', 'templateFiles');
 
 		const fileItems = fs.readdirSync(templateDir)
 			.filter(file => path.parse(file).ext === '.txt')
@@ -31,16 +31,15 @@ export function activate(context: vscode.ExtensionContext) {
 			await vscode.window.showTextDocument(document);
 
 		}
-
-		const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+		const workspaceFolder = args?.fsPath ? vscode.Uri.file(args.fsPath) : undefined;;
 		if (!workspaceFolder) { return; }
 
 		const elementName = await vscode.window.showInputBox({ prompt: 'Enter the name of the new component' });
 		if (!elementName) { return; }
 
 		const createFile = async (templateName: string, destination: string[] = []) => {
-			const destinationUri = vscode.Uri.joinPath(workspaceFolder.uri, ...destination, `${elementName}.${templateName}`);
-
+			const destinationUri = vscode.Uri.joinPath(workspaceFolder, ...destination, `${elementName}.${templateName}`);
+			console.log('destinationUri', destinationUri);
 			const templateUri = vscode.Uri.file(path.join(templateDir, `${templateName}.txt`));
 			const templateContent = await vscode.workspace.fs.readFile(templateUri);
 			const templateText = new TextDecoder().decode(templateContent);
@@ -50,7 +49,7 @@ export function activate(context: vscode.ExtensionContext) {
 		};
 
 		const createDir = (folderPath: string[]) => {
-			const newFolderPath = path.join(workspaceFolder.uri.fsPath || '', ...folderPath);
+			const newFolderPath = path.join(workspaceFolder.fsPath || '', ...folderPath);
 			fs.mkdirSync(newFolderPath, { recursive: true });
 		};
 		// File its template file, component its multiply template files (with dir or no)
@@ -83,7 +82,7 @@ export function activate(context: vscode.ExtensionContext) {
 		const folderPath = [];
 		// create root if creating component
 		if (componentItems.includes(selectedItem)) {
-			const newFolderPath = path.join(workspaceFolder.uri.fsPath || '', elementName);
+			const newFolderPath = path.join(workspaceFolder.fsPath || '', elementName);
 			fs.mkdirSync(newFolderPath, { recursive: true });
 			folderPath.push(elementName);
 		}
