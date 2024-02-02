@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import { normalize } from 'node:path/win32';
+import { nextTick } from 'process';
+import { networkInterfaces } from 'os';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -85,8 +88,13 @@ export function activate(context: vscode.ExtensionContext) {
 		if (!workspaceFolder) { return; }
 
 		// имя для шаблона или компанента
-		const overName = await vscode.window.showInputBox({ prompt: 'Enter the name' });
-		if (!overName) { return; }
+		const tmp = await vscode.window.showInputBox({ prompt: 'Enter the name' });
+		if (!tmp) { return; }
+		const t1 = tmp.split('/');
+		const rooter = t1.slice(0, t1.length - 1);
+
+		const overName = t1[t1.length - 1];
+
 
 		type Dirs = Record<string, FileStructure>;
 		type FileStructure = Array<string | Dirs>;
@@ -133,8 +141,9 @@ export function activate(context: vscode.ExtensionContext) {
 			const templateUri = vscode.Uri.file(path.join(templatesDir, templateName));
 			const templateContent = await vscode.workspace.fs.readFile(templateUri);
 			const templateText = new TextDecoder().decode(templateContent);
-			const replacedText = templateText.replace(/{fileNameUpper}/g, overName)
-			.replace(/{fileNameLower}/g, overName);
+			const replacedText = templateText
+				.replace(/{fileNameUpper}/g, overName)
+				.replace(/{fileNameLower}/g, overName);
 
 			await vscode.workspace.fs.writeFile(destinationUri, Buffer.from(replacedText));
 		};
@@ -152,14 +161,16 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 		};
-
+		
+		let createElement: any;
 		if (components.includes(selectedItem)) {
-			const fileStructure = { [overName]: createFileStructure([selectedItem]) };
-			await create(fileStructure);
+			createElement = { [overName]: createFileStructure([selectedItem]) };
 		} else if (templates.includes(selectedItem)) {
-			await create(selectedItem);
+			createElement = selectedItem;
 		}
-
+		await create(
+			rooter.length ? {[rooter[0]]: [createElement]} : createElement
+		);
 	});
 
 	context.subscriptions.push(disposable);
