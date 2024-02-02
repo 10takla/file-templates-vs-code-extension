@@ -133,8 +133,10 @@ export function activate(context: vscode.ExtensionContext) {
 			const templateUri = vscode.Uri.file(path.join(templatesDir, templateName));
 			const templateContent = await vscode.workspace.fs.readFile(templateUri);
 			const templateText = new TextDecoder().decode(templateContent);
+			const replacedText = templateText.replace(/{fileNameUpper}/g, overName)
+			.replace(/{fileNameLower}/g, overName);
 
-			await vscode.workspace.fs.writeFile(destinationUri, Buffer.from(templateText));
+			await vscode.workspace.fs.writeFile(destinationUri, Buffer.from(replacedText));
 		};
 
 		const create = async (fS: FileStructure | string | Dirs, path: string[] = []) => {
