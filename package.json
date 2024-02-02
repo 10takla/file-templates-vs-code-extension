@@ -2,7 +2,7 @@
   "name": "file-templates-by-10takla",
   "displayName": "file templates by 10takla",
   "description": "allows you to create flexible file templates, file bundles and template projects",
-  "version": "1.6.0",
+  "version": "1.6.2",
   "engines": {
     "vscode": "^1.86.0"
   },

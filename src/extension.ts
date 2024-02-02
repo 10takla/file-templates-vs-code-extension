@@ -5,89 +5,148 @@ import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('file-templates.createNewFile', async (args) => {
-		const rootDir = path.join(context.extensionPath, 'out')
-		const templateDir = path.join(rootDir, 'templateFiles');
+		const rootDir = path.join(context.extensionPath, 'out');
+		const templatesDir = path.join(rootDir, 'templates');
 
-		const fileItems = fs.readdirSync(templateDir);
-		
-		type Content = Array<string | ComponentsOrFiles>;
-		type ComponentsOrFiles = Record<'string', Content>;
-		const pathToConfig = path.join(rootDir, 'config.json');
-		const config = JSON.parse(fs.readFileSync(pathToConfig, 'utf8')) as ComponentsOrFiles;
-		const componentItems = Object.keys(config);
+		const getFilesAndDirs = (paths: string[]) => {
+			const dirents = fs.readdirSync(path.join(templatesDir, ...paths), { withFileTypes: true });
+			const templates = dirents.filter(dirent => !dirent.isDirectory()).map(dirent => dirent.name);
+			const components = dirents.filter(dirent => dirent.isDirectory()).map(dirent => dirent.name);
+			return [templates, components];
+		};
+		// Все шаблоны и компаненты
+		const [templates, components] = getFilesAndDirs([]);
 
-		const selectedItem = await vscode.window.showQuickPick(['Create Template', ...fileItems, ...componentItems]);
+		// Конфигурация имен
+		const getConfig = () => {
+			type Prefix = string;
+			interface Config {
+				defaultCase: Prefix,
+				fileNamePrefixes: {
+					"upperCaseFirstLetter": Prefix,
+					"lowerCaseFirstLetter": Prefix,
+					"upperCase": Prefix,
+					"lowerCase": Prefix
+				},
+				caseSettings: Record<string, string>
+			}
+
+			const pathToConfig = path.join(rootDir, 'config.json');
+			const config = JSON.parse(fs.readFileSync(pathToConfig, 'utf8')) as Config;
+
+			const patternKeys = Object.keys(config.caseSettings);
+
+			const caseSettings = templates.reduce((all, templateName) => {
+				if (patternKeys.includes(templateName)) {
+					const templatePattern = config.caseSettings[templateName];
+					return { ...all, [templateName]: templatePattern };
+				} else {
+					return { ...all, [templateName]: `${config.defaultCase}${templateName}` };
+				}
+			}, {} as Config['caseSettings']);
+
+			return {
+				fileNamePrefixes: config.fileNamePrefixes,
+				caseSettings: caseSettings,
+			};
+		};
+		const config = getConfig();
+
+		// выбран шаблон или компанент, или 'Create Template'
+		const selectedItem = await vscode.window.showQuickPick(['Create Template', ...templates, ...components]);
 		if (!selectedItem) { return; }
 
+		// если выбран 'Create Template', то создать новый шаблон
 		if (selectedItem === 'Create Template') {
 			const nameTemplate = await vscode.window.showInputBox({ prompt: 'Enter the type for template. Example: tsx, module.scss, jsx' });
 			if (!nameTemplate) { return; }
 
 			const fileName = `${nameTemplate}.txt`;
-			const fileUri = vscode.Uri.file(path.join(templateDir, fileName));
+			const fileUri = vscode.Uri.file(path.join(templatesDir, fileName));
 			await vscode.workspace.fs.writeFile(fileUri, Buffer.from(''));
 
 			const document = await vscode.workspace.openTextDocument(fileUri);
 			await vscode.window.showTextDocument(document);
-
 		}
+
+		// папка в которой будут созданы шаблоны или компаненты
 		const workspaceFolder = args?.fsPath ? vscode.Uri.file(args.fsPath) : undefined;;
 		if (!workspaceFolder) { return; }
 
-		const elementName = await vscode.window.showInputBox({ prompt: 'Enter the name of the new component' });
-		if (!elementName) { return; }
+		// имя для шаблона или компанента
+		const overName = await vscode.window.showInputBox({ prompt: 'Enter the name' });
+		if (!overName) { return; }
 
-		const createFile = async (templateName: string, destination: string[] = []) => {
-			const destinationUri = vscode.Uri.joinPath(workspaceFolder, ...destination, `${elementName}${templateName}`);
-			console.log('destinationUri', destinationUri);
-			const templateUri = vscode.Uri.file(path.join(templateDir, templateName));
-			const templateContent = await vscode.workspace.fs.readFile(templateUri);
-			const templateText = new TextDecoder().decode(templateContent);
-			const replacedText = templateText.replace(/{fileName}/g, elementName);
-
-			await vscode.workspace.fs.writeFile(destinationUri, Buffer.from(replacedText));
+		type Dirs = Record<string, FileStructure>;
+		type FileStructure = Array<string | Dirs>;
+		const createFileStructure = (pathToComp: string[]): FileStructure => {
+			const [files, dirs] = getFilesAndDirs(pathToComp);
+			const allFiles = files.map((compOrTemp) => {
+				if (templates.includes(compOrTemp)) {
+					return compOrTemp;
+				}
+				return createFileStructure([compOrTemp]);
+			});
+			const allDirs = dirs.map((dirName) => {
+				return {
+					[dirName]:
+						createFileStructure([...pathToComp, dirName])
+				};
+			});
+			return [...allFiles.flat(), ...allDirs];
 		};
+
 
 		const createDir = (folderPath: string[]) => {
 			const newFolderPath = path.join(workspaceFolder.fsPath || '', ...folderPath);
 			fs.mkdirSync(newFolderPath, { recursive: true });
 		};
-		// File its template file, component its multiply template files (with dir or no)
-		const createFileOrComponent = async (componentOrFileName: string, [...folderPath]: string[] = [], nestingLevel = 1) => {
-			if (nestingLevel >= 8) {
-				return;
-			}
-			if (fileItems.includes(componentOrFileName)) {
-				await createFile(componentOrFileName, [...folderPath]);
-			} else if (componentItems.includes(selectedItem)) {
-				const componentName = componentOrFileName;
-				const createComponentOrDir = async (componentItems: Content, folderPath: string[]) => {
-					for (const componentItem of componentItems) {
-						if (typeof componentItem === 'string') {
-							await createFileOrComponent(componentItem, [...folderPath], nestingLevel + 1);
-						} else {
-							//  if componentItem has {"..": [...]} structure its must create dir
-							for (const [dirName, dirItems] of Object.entries(componentItem)) {
-								createDir([...folderPath, dirName]);
-								await createComponentOrDir(dirItems, [...folderPath, dirName]);
-							}
-						}
-					}
-				};
-				// @ts-ignore
-				createComponentOrDir(config[componentName] as Content, folderPath);
+		const createTemplate = async (templateName: string, destination: string[] = []) => {
+			const cases = {
+				'upperCaseFirstLetter': overName[0].toUpperCase() + overName.slice(1),
+				'lowerCaseFirstLetter': overName[0].toLowerCase() + overName.slice(1),
+				'upperCase': overName.toUpperCase(),
+				'lowerCase': overName.toLowerCase(),
+			};
+
+			const currPatter = config.caseSettings[templateName];
+
+			const fileName = Object.entries(config.fileNamePrefixes)
+				.reduce((currPatter, [casesKey, prefix]) => {
+					// @ts-ignore
+					return currPatter.replace(prefix, cases[casesKey]);
+				}, currPatter);
+
+			const destinationUri = vscode.Uri.joinPath(workspaceFolder, ...destination, fileName);
+
+			const templateUri = vscode.Uri.file(path.join(templatesDir, templateName));
+			const templateContent = await vscode.workspace.fs.readFile(templateUri);
+			const templateText = new TextDecoder().decode(templateContent);
+
+			await vscode.workspace.fs.writeFile(destinationUri, Buffer.from(templateText));
+		};
+
+		const create = async (fS: FileStructure | string | Dirs, path: string[] = []) => {
+			if (typeof fS === 'string') {
+				await createTemplate(fS, [...path]);
+			} else if (Array.isArray(fS)) {
+				fS.forEach(i => create(i, [...path]));
+			} else if (typeof fS === 'object') {
+				const entries = Object.entries(fS);
+				for (const [dirName, nfs] of entries) {
+					createDir([...path, dirName]);
+					create(nfs, [...path, dirName]);
+				}
 			}
 		};
 
-		const folderPath = [];
-		// create root if creating component
-		if (componentItems.includes(selectedItem)) {
-			const newFolderPath = path.join(workspaceFolder.fsPath || '', elementName);
-			fs.mkdirSync(newFolderPath, { recursive: true });
-			folderPath.push(elementName);
+		if (components.includes(selectedItem)) {
+			const fileStructure = { [overName]: createFileStructure([selectedItem]) };
+			await create(fileStructure);
+		} else if (templates.includes(selectedItem)) {
+			await create(selectedItem);
 		}
 
-		await createFileOrComponent(selectedItem, folderPath);
 	});
 
 	context.subscriptions.push(disposable);
