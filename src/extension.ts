@@ -5,7 +5,13 @@ import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
 	let disposable = vscode.commands.registerCommand('file-templates.createNewFile', async (args) => {
-		const rootDir = path.join(context.extensionPath, 'out');
+		const configs = vscode.workspace.getConfiguration('fileTemplates');
+		const enableProjectDir = configs.get<boolean>('enableProjectDir') || false;
+
+		const t = vscode.workspace.workspaceFolders;
+		if (!t) { return; }
+
+		const rootDir = enableProjectDir ? path.join(t[0].uri.fsPath, '.vscode') : path.join(context.extensionPath, 'out');
 		const templatesDir = path.join(rootDir, 'templates');
 
 		const getFilesAndDirs = (paths: string[]) => {
@@ -31,8 +37,13 @@ export function activate(context: vscode.ExtensionContext) {
 				caseSettings: Record<string, string>
 			}
 
-			const pathToConfig = path.join(rootDir, 'config.json');
-			const config = JSON.parse(fs.readFileSync(pathToConfig, 'utf8')) as Config;
+			const config: Config = {
+				fileNamePrefixes: configs.get<Config['fileNamePrefixes']>('fileNamePrefixes')
+					|| ["upperCaseFirstLetter", "lowerCaseFirstLetter", "upperCase", "lowerCase"]
+						.reduce((all, curr) => ({ ...all, [curr]: '' }), {} as Config['fileNamePrefixes']),
+				defaultCase: configs.get<Config['defaultCase']>('defaultCase') || "",
+				caseSettings: configs.get<Config['caseSettings']>('caseSettings') || {},
+			};
 
 			const patternKeys = Object.keys(config.caseSettings);
 

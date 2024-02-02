@@ -2,7 +2,7 @@
   "name": "file-templates-by-10takla",
   "displayName": "file templates by 10takla",
   "description": "allows you to create flexible file templates, file bundles and template projects",
-  "version": "1.6.2",
+  "version": "1.6.6",
   "engines": {
     "vscode": "^1.86.0"
   },
@@ -26,6 +26,44 @@
           "group": "navigation"
         }
       ]
+    },
+    "configuration": {
+      "title": "Настройки моего расширения",
+      "properties": {
+        "fileTemplates.enableProjectDir": {
+          "type": "boolean",
+          "default": true,
+          "description": "Хранить шаблоны в каталоге проекта."
+        },
+        "fileTemplates.fileNamePrefixes": {
+          "type": "object",
+          "default": {
+            "upperCaseFirstLetter": "{uF}",
+            "lowerCaseFirstLetter": "{lF}",
+            "upperCase": "{u}",
+            "lowerCase": "{l}"
+          },
+          "description": "Префиксы для имен файлов."
+        },
+        "fileTemplates.defaultCase": {
+          "type": "string",
+          "default": "{uF}",
+          "description": "Префикс по умолчанию для имен файлов."
+        },
+        "fileTemplates.caseSettings": {
+          "type": "object",
+          "default": {
+            ".tsx": "{uF}.tsx",
+            ".module.scss": "{uF}.module.scss",
+            ".type.ts": "{lF}.type.ts",
+            "Selector.ts": "{lF}Selector.ts",
+            "Service.ts": "{lF}Service.ts",
+            "Slice.ts": "{lF}Slice.ts",
+            "Provider.ts": "{uF}Provider.ts"
+          },
+          "description": "Настройки форматирования имен файлов."
+        }
+      }
     }
   },
   "scripts": {
