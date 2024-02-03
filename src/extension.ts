@@ -142,8 +142,9 @@ export function activate(context: vscode.ExtensionContext) {
 			const templateContent = await vscode.workspace.fs.readFile(templateUri);
 			const templateText = new TextDecoder().decode(templateContent);
 			const replacedText = templateText
-				.replace(/{fileNameUpper}/g, overName)
-				.replace(/{fileNameLower}/g, overName);
+				.replace('{fileName}', overName)
+				.replace('{fileNameUpper}', overName[0].toUpperCase() + overName.slice(1))
+				.replace('{fileNameLower}', overName[0].toLowerCase() + overName.slice(1));
 
 			await vscode.workspace.fs.writeFile(destinationUri, Buffer.from(replacedText));
 		};
@@ -161,7 +162,7 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 		};
-		
+
 		let createElement: any;
 		if (components.includes(selectedItem)) {
 			createElement = { [overName]: createFileStructure([selectedItem]) };
@@ -169,7 +170,7 @@ export function activate(context: vscode.ExtensionContext) {
 			createElement = selectedItem;
 		}
 		await create(
-			rooter.length ? {[rooter[0]]: [createElement]} : createElement
+			rooter.length ? { [rooter[0]]: [createElement] } : createElement
 		);
 	});
 
